@@ -1,14 +1,19 @@
 <template>
-    <div class="container">
+    <div class="min-vh-100" :class="darkMode ? 'bg-dark' : ''">
+        <div class="container">
         <div class="row pt-5">
             <div class="col-md-12">
                 <div class="form-check form-switch d-flex justify-content-center">
-                    <input class="form-check-input" type="checkbox" role="switch" id="themeMode" v-model="isDarkMode" @click="themeMode()" :checked="isDarkMode">
-                    <label class="form-check-label ms-3" for="themeMode" :class="isDarkMode ? 'text-white' : ''">Mode</label>
+                    <input class="form-check-input" type="checkbox" role="switch" id="darkMode" v-model="darkMode" @change="darkModeToggle()" :checked="darkMode">
+                    <label class="form-check-label ms-3" for="darkMode" :class="darkMode ? 'text-white' : ''">
+                        <span v-if="darkMode">🌙</span>
+                        <span v-else>☀️</span>
+                        Mode
+                    </label>
                 </div>
-                <h3 class="display-3 text-center mb-5" :class="isDarkMode ? 'text-white' : ''">Todo List</h3>
-                <div class="card">
-                    <div class="card-body">
+                <h3 class="display-3 text-center mb-5" :class="darkMode ? 'text-white' : ''">Todo List</h3>
+                <div class="card" :class="darkMode ? 'bg-transparent border-0' : ''">
+                    <div class="card-body rounded-3" :class="darkMode ? 'bg-dark-opacity' : ''">
                         <div class="row">
                             <div class="col align-self-center">
                                 <div class="form-floating">
@@ -24,8 +29,8 @@
         </div>
         <div class="row pt-3">
             <div class="col-md-12">
-                <div class="card">
-                    <div class="card-body">
+                <div class="card" :class="darkMode ? 'bg-transparent border-0' : ''">
+                    <div class="card-body rounded-3" :class="darkMode ? 'bg-dark-opacity' : ''">
                         <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
                             <!-- Button Menu Todo Active -->
                             <li class="nav-item" role="presentation">
@@ -35,8 +40,8 @@
                                     Todo
                                     <span
                                         class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                                        v-if="todoActiveLenght > 0">
-                                        {{ todoActiveLenght }}
+                                        v-if="todoUndoneLength > 0">
+                                        {{ todoUndoneLength }}
                                         <span class="visually-hidden">unread todo active</span>
                                     </span>
                                 </button>
@@ -49,8 +54,8 @@
                                     Complete
                                     <span
                                         class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info"
-                                        v-if="todoDoneLenght > 0">
-                                        {{ todoDoneLenght }}
+                                        v-if="todoDoneLength > 0">
+                                        {{ todoDoneLength }}
                                         <span class="visually-hidden">unread todo done</span>
                                     </span>
                                 </button>
@@ -61,12 +66,12 @@
                         <div class="tab-content" id="pills-tabContent">
                             <div class="tab-pane fade show active" id="pills-todoActive" role="tabpanel"
                                 aria-labelledby="pills-todoActive-tab" tabindex="0">
-                                <transition-group name="list" tag="ul" class="list-group" mode="out-in">
-                                    <li class="list-unstyled" v-if="!todoActive.length > 0">
+                                <transition-group name="list" tag="ul" class="list-group">
+                                    <li class="list-unstyled" v-if="!todoUndoneLength > 0" :class="darkMode ? 'text-white' : ''">
                                         Tidak ada todo
                                     </li>
-                                    <li v-else class="list-group-item d-flex align-items-center" v-for="todo in todoActive" :key="todo.id">
-                                        <input class="form-check-input me-1" type="checkbox" :value="todo.name" :id="todo.id" @change="checkTodo(todo.id)" :checked="todo.isDone">
+                                    <li v-else class="list-group-item d-flex align-items-center" v-for="todo in todoUndone" :key="todo"  :class="darkMode ? 'bg-dark-3 text-white' : ''">
+                                        <input class="form-check-input me-1"  type="checkbox" :value="todo.name" :id="todo.id" @change="checkTodo(todo.id)" :checked="todo.isDone">
                                         <label class="form-check-label" :for="todo.id">{{ todo.name }}</label>
                                         <div class="ms-auto">
                                             <button class="btn btn-sm" @click="editTodo(todo.id)">
@@ -87,12 +92,12 @@
                             <div class="tab-pane fade" id="pills-todoDone" role="tabpanel"
                                 aria-labelledby="pills-todoDone-tab" tabindex="0">
                                 <transition-group name="list" tag="ul" class="list-group">
-                                    <li class="list-unstyled" v-if="!todoDone.length > 0">
+                                    <li class="list-unstyled" v-if="!todoDoneLength > 0" :class="darkMode ? 'text-white' : ''">
                                         Tidak ada todo yang diselesaikan
                                     </li>
-                                    <li v-else class="list-group-item d-flex align-items-center" v-for="todo in todoDone" :key="todo">
+                                    <li v-else class="list-group-item d-flex align-items-center" v-for="todo in todoDone" :key="todo" :class="darkMode ? 'bg-dark-3 text-white' : ''">
                                         <input class="form-check-input me-1" type="checkbox" :value="todo.name"
-                                            :id="todo.id" @change="uncheckTodo(todo.id)" :checked="todo.isDone">
+                                            :id="todo.id" @change="checkTodo(todo.id)" :checked="todo.isDone">
                                         <label class="form-check-label"
                                             :for="todo.id">{{ todo.name }}</label>
                                         <div class="ms-auto">
@@ -111,6 +116,7 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 </template>
 
@@ -119,92 +125,83 @@
         name: 'Home',
         data() {
             // get data from localStorage
-            let todoActive = JSON.parse(localStorage.getItem('todoActive')) || [];
-            let todoDone = JSON.parse(localStorage.getItem('todoDone')) || [];
-            let isDarkMode = JSON.parse(localStorage.getItem('isDarkMode')) || false;
+            let todos = JSON.parse(localStorage.getItem('todos')) || [];
+            let darkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
             return {
-                todoActive,
-                todoDone,
+                todos,
                 inputTodo: '',
-                isDarkMode
+                darkMode: darkMode,
             }
         },
         computed: {
-            // lenght of todoActive
-            todoActiveLenght() {
-                return this.todoActive.length;
+            // lenght of todos
+            todoLength() {
+                return this.todos.length;
             },
-            // lenght of todoDone
-            todoDoneLenght() {
-                return this.todoDone.length;
-            }
+            // length of todos done
+            todoDoneLength() {
+                return this.todos.filter(todo => todo.isDone).length;
+            },
+            // length of todos undone
+            todoUndoneLength() {
+                return this.todos.filter(todo => !todo.isDone).length;
+            },
+            // todos undone
+            todoUndone() {
+                return this.todos.filter(todo => !todo.isDone);
+            },
+            // todos done
+            todoDone() {
+                return this.todos.filter(todo => todo.isDone);
+            },
         },
         methods: {
             // add todo to local storage
             addTodo() {
-                if (this.inputTodo) {
-                    this.todoActive.push({
-                        id: +new Date(),
+                if (this.inputTodo.length > 0) {
+                    this.todos.push({
                         name: this.inputTodo,
                         isDone: false,
-                    })
-                    localStorage.setItem('todoActive', JSON.stringify(this.todoActive))
-                    this.inputTodo = ''
+                        id: +new Date(),
+                    });
+                    this.inputTodo = '';
+                    // add toastr notification
+                    toastr.success('Todo berhasil ditambahkan');
+                    localStorage.setItem('todos', JSON.stringify(this.todos));
                 }
             },
             // delete todo from local storage
             deleteTodo(id) {
-                this.todoActive = this.todoActive.filter(todo => todo.id !== id)
-                localStorage.setItem('todoActive', JSON.stringify(this.todoActive))
-                this.todoDone = this.todoDone.filter(todo => todo.id !== id)
-                localStorage.setItem('todoDone', JSON.stringify(this.todoDone))
+                this.todos = this.todos.filter(todo => todo.id !== id)
+                localStorage.setItem('todos', JSON.stringify(this.todos))
             },
             // edit todo from local storage
             editTodo(id) {
-                let todoActive = this.todoActive.find(todo => todo.id === id)
-                this.inputTodo = todoActive.name
+                let todos = this.todos.find(todo => todo.id === id)
+                this.inputTodo = todos.name
                 this.deleteTodo(id)
+                // focus on input
+                document.getElementById('inputTodo').focus()
             },
-            // check todo from local storage
+            // check and uncheck todos from local storage
             checkTodo(id) {
-                this.todoActive = this.todoActive.map(todo => {
-                    if (todo.id === id) {
-                        todo.isDone = !todo.isDone
-                    }
-                    return todo
-                })
-                // add todo to todoDone
-                this.todoDone.push(this.todoActive.find(todo => todo.id === id))
-                localStorage.setItem('todoDone', JSON.stringify(this.todoDone))
-                // delete todo from todoActive
-                this.todoActive = this.todoActive.filter(todo => todo.id !== id)
-                localStorage.setItem('todoActive', JSON.stringify(this.todoActive))
+                let todos = this.todos.find(todo => todo.id === id)
+                todos.isDone = !todos.isDone
+                localStorage.setItem('todos', JSON.stringify(this.todos))
             },
-            // uncheck todo from local storage
-            uncheckTodo(id) {
-                this.todoDone = this.todoDone.map(todo => {
-                    if (todo.id === id) {
-                        todo.isDone = !todo.isDone
-                    }
-                    return todo
-                })
-                // add todo to todoActive
-                this.todoActive.push(this.todoDone.find(todo => todo.id === id))
-                localStorage.setItem('todoActive', JSON.stringify(this.todoActive))
-                // delete todo from todoDone
-                this.todoDone = this.todoDone.filter(todo => todo.id !== id)
-                localStorage.setItem('todoDone', JSON.stringify(this.todoDone))
+            // clear all todos from local storage
+            clearTodo() {
+                this.todos = []
+                localStorage.setItem('todos', JSON.stringify(this.todos))
             },
-            themeMode() {
-                let isDarkMode = localStorage.getItem('isDarkMode')
-                if (isDarkMode === 'true') {
-                    localStorage.setItem('isDarkMode', false)
-                    document.getElementById('app').classList.remove('bg-dark')
+            // dark mode add to local storage
+            darkModeToggle() {
+                if (localStorage.getItem('darkMode') === 'true') {
+                    localStorage.setItem('darkMode', 'false');
                 } else {
-                    localStorage.setItem('isDarkMode', true)
-                    document.getElementById('app').classList.add('bg-dark')
+                    localStorage.setItem('darkMode', 'true');
                 }
-            }
+            },
         },
     }
 </script>
@@ -212,11 +209,20 @@
 <style scoped>
     .list-enter-active,
     .list-leave-active {
-        transition: opacity 0.1s ease;
+        transition: opacity 0.3s ease;
     }
 
     .list-enter-from,
     .list-leave-to {
         opacity: 0;
+    }
+    .bg-dark {
+        background-color: #041C32 !important;
+    }
+    .bg-dark-opacity {
+        background-color: #064663;
+    }
+    .bg-dark-3 {
+        background-color: #04293A;
     }
 </style>
